@@ -1,0 +1,664 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TrueSnap - Verify Payment Alerts</title>
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="TrueSnap">
+<link rel="manifest" href='data:application/manifest+json,{"name":"TrueSnap","short_name":"TrueSnap","start_url":".","display":"standalone","background_color":"%230a0a0a","theme_color":"%230a0a0a","icons":[{"src":"https://twemoji.maxcdn.com/v/latest/72x72/1f6e1.png","sizes":"72x72","type":"image/png"}]}'>
+<link rel="apple-touch-icon" href="https://twemoji.maxcdn.com/v/latest/72x72/1f6e1.png">
+<link rel="icon" href="https://twemoji.maxcdn.com/v/latest/72x72/1f6e1.png">
+<style>
+  :root { --ink:#111; --muted:#6b6f76; --line:#e4e6ea; --bg:#f3f4f6; --warn:#a15c00; --warn-bg:#fff4e0; --ok:#12703a; --ok-bg:#e8f6ee; --err:#b42318; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:36px 16px; background:#0a0a0a; color:#eee; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased; }
+  .logo-badge { width:64px; height:64px; border-radius:18px; background:#111; border:1px solid #262626; display:flex; align-items:center; justify-content:center; font-size:32px; margin-bottom:12px; }
+  .tagline { color:#9a9a9a; font-size:13px; margin:0 0 18px; text-align:center; }
+  .card { width:100%; max-width:400px; background:#fff; border-radius:20px; padding:28px 22px 22px; box-shadow:0 1px 2px rgba(0,0,0,.05),0 12px 32px rgba(0,0,0,.08); }
+  .brand { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:6px; }
+  h1 { margin:0; font-size:26px; letter-spacing:-0.03em; font-weight:800; }
+  .counter { font-size:13px; font-weight:600; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .sub { margin:0 0 20px; font-size:15px; line-height:1.45; color:var(--muted); }
+  .drop { display:block; position:relative; border:1.5px dashed #c5c9d0; border-radius:14px; padding:22px 14px; text-align:center; cursor:pointer; transition:border-color .15s, background .15s; }
+  .drop:hover, .drop:focus-within { border-color:var(--ink); background:#fafafa; }
+  .drop input { position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+  .drop strong { display:block; font-size:15px; margin-bottom:2px; word-break:break-all; }
+  .drop span { font-size:13px; color:var(--muted); }
+  .drop img { display:none; max-width:100%; max-height:220px; margin:0 auto 12px; border-radius:8px; border:1px solid var(--line); }
+  .drop.has-file img { display:block; }
+  button.check { width:100%; margin-top:14px; padding:16px; border:0; border-radius:14px; background:#000; color:#fff; font-size:15px; font-weight:700; letter-spacing:.04em; cursor:pointer; transition:transform .1s, opacity .15s; }
+  button.check:active { transform:scale(.985); }
+  button.check:disabled { opacity:.45; cursor:not-allowed; }
+  button:focus-visible, a:focus-visible, summary:focus-visible { outline:3px solid #2563eb; outline-offset:2px; }
+  .result { margin-top:16px; text-align:center; font-size:16px; font-weight:700; }
+  .result.busy { color:var(--muted); font-weight:600; }
+  .result.error { color:var(--err); font-weight:600; font-size:14px; }
+  .verdict { border-radius:12px; padding:14px 12px; animation:settle .25s ease-out; }
+  .verdict.warn { color:var(--warn); background:var(--warn-bg); }
+  .verdict.clear { color:var(--ok); background:var(--ok-bg); }
+  .verdict small { display:block; margin-top:4px; font-size:12.5px; font-weight:500; opacity:.85; }
+  ul.signals { list-style:none; margin:12px 0 0; padding:0; text-align:left; font-size:13.5px; font-weight:400; line-height:1.4; }
+  ul.signals li { padding:8px 0; border-top:1px solid var(--line); }
+  details { margin-top:10px; text-align:left; font-size:12.5px; font-weight:400; color:var(--muted); }
+  details pre { white-space:pre-wrap; word-break:break-word; background:#f7f7f8; padding:10px; border-radius:8px; margin:6px 0 0; max-height:160px; overflow:auto; font-family:ui-monospace,Menlo,monospace; font-size:12px; }
+  .note { margin:12px 0 0; font-size:12px; line-height:1.45; color:var(--muted); font-weight:400; text-align:left; }
+  .review { margin-top:14px; padding:14px; border:1px solid var(--line); border-radius:14px; text-align:left; font-weight:400; }
+  .review-h { font-size:15px; font-weight:700; margin-bottom:2px; }
+  .review-p { margin:0 0 10px; font-size:13px; color:var(--muted); line-height:1.4; }
+  .btn { display:block; width:100%; margin-top:8px; padding:13px; border-radius:12px; font-size:14px; font-weight:700; text-align:center; text-decoration:none; cursor:pointer; font-family:inherit; }
+  .btn.dark { background:#000; color:#fff; border:0; }
+  .btn.light { background:#fff; color:var(--ink); border:1.5px solid var(--ink); }
+  .pay-box { border:1px solid var(--line); border-radius:14px; padding:14px; margin-top:4px; }
+  .pay-box-h { font-weight:700; font-size:14px; margin-bottom:8px; }
+  .pay-row { display:flex; justify-content:space-between; font-size:14px; padding:5px 0; border-top:1px dashed var(--line); }
+  .pay-row:first-of-type { border-top:0; }
+  .pay-note { font-size:12px; color:var(--muted); line-height:1.4; margin:10px 0 8px; }
+  .unlock-box { margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
+  .unlock-label { display:block; font-size:13px; font-weight:600; margin-bottom:6px; }
+  #unlockInput { width:100%; padding:12px; border:1.5px solid var(--line); border-radius:10px; font-size:14px; margin-bottom:8px; box-sizing:border-box; }
+  .unlock-msg { font-size:13px; font-weight:600; margin:8px 0 0; min-height:16px; }
+  .unlock-msg.ok { color:var(--ok); }
+  .unlock-msg.bad { color:var(--err); }
+
+  body.pre-consent > .logo-badge, body.pre-consent > .tagline, body.pre-consent > .card { display:none; }
+  .consent-overlay { display:none; }
+  body.pre-consent .consent-overlay { display:flex; position:fixed; inset:0; background:rgba(0,0,0,.6); align-items:center; justify-content:center; padding:20px; z-index:50; }
+  .consent-card { background:#fff; color:#111; border-radius:18px; padding:22px 20px; max-width:360px; width:100%; text-align:center; }
+  .consent-card h2 { margin:0 0 10px; font-size:18px; }
+  .consent-text { font-size:13.5px; line-height:1.5; color:#444; text-align:left; margin:0 0 14px; }
+  .consent-text a { color:#2563eb; }
+  .consent-check { display:flex; align-items:flex-start; gap:8px; font-size:13.5px; text-align:left; margin-bottom:14px; cursor:pointer; }
+  .consent-check input { margin-top:2px; }
+
+  .policy-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); align-items:center; justify-content:center; padding:20px; z-index:60; }
+  .policy-overlay.show { display:flex; }
+  .policy-card { max-width:380px; max-height:80vh; display:flex; flex-direction:column; }
+  .policy-body { overflow-y:auto; margin-bottom:14px; }
+  .policy-body p { margin:0 0 10px; }
+  @keyframes settle { from { transform:scale(.97); opacity:0; } to { transform:none; opacity:1; } }
+  .paywall { display:none; margin-top:18px; padding-top:18px; border-top:1px solid var(--line); }
+  .paywall.show { display:block; }
+  .paywall h2 { margin:0 0 4px; font-size:18px; letter-spacing:-0.02em; }
+  .paywall p { margin:0 0 14px; font-size:14px; color:var(--muted); line-height:1.45; }
+  .plan { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 16px; margin-bottom:10px; border-radius:14px; text-decoration:none; font-weight:700; font-size:15px; }
+  .plan small { display:block; font-size:12.5px; font-weight:500; margin-top:2px; opacity:.75; }
+  .plan.starter { border:1.5px solid var(--ink); color:var(--ink); background:#fff; }
+  .plan.pro { background:#000; color:#fff; }
+  .plan .price { font-size:18px; white-space:nowrap; }
+  .fine { margin:10px 0 0; font-size:11.5px; line-height:1.4; color:var(--muted); text-align:center; }
+  .hidden { display:none !important; }
+  @media (prefers-reduced-motion:reduce) { * { animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body class="pre-consent">
+  <div class="consent-overlay" id="consentOverlay">
+    <div class="consent-card">
+      <div class="logo-badge" style="margin:0 auto 12px">🛡️</div>
+      <h2>Before you check a screenshot</h2>
+      <p class="consent-text">TrueSnap scans your screenshot in your browser and also sends it
+        to our secure review channel, where it is automatically deleted within 24 hours.
+        We never sell your data. Full details in our
+        <a href="#" id="policyLink">Privacy Policy</a>.</p>
+      <label class="consent-check">
+        <input type="checkbox" id="consentCheck">
+        I have read and agree to the Privacy Policy
+      </label>
+      <button class="btn dark" id="consentBtn" type="button" disabled>Agree &amp; Continue</button>
+    </div>
+  </div>
+
+  <div class="policy-overlay" id="policyOverlay">
+    <div class="consent-card policy-card">
+      <h2>TrueSnap Privacy Policy</h2>
+      <div class="consent-text policy-body">
+        <p><strong>What we collect.</strong> When you tap "Check Now", your screenshot is scanned in your browser for editing traces and its text is read using an on-page scanner. The screenshot is also sent to our secure review channel so our team can check accuracy, and is automatically deleted from that channel within 24 hours.</p>
+        <p><strong>What we do not do.</strong> We do not sell your screenshots or data to third parties or use them for marketing. We do not access your bank account, OPay account, or move money. We do not use your screenshot beyond reviewing that specific check.</p>
+        <p><strong>Free checks and payment.</strong> TrueSnap counts free checks using your browser's local storage, not an account. Paid plans are confirmed manually by the TrueSnap team after you send payment proof.</p>
+        <p><strong>Children.</strong> TrueSnap does not knowingly collect data from children under 13.</p>
+        <p><strong>Your control.</strong> You can stop using TrueSnap at any time. Clearing your browser's site data removes your local free-check count from that device.</p>
+        <p><strong>Contact.</strong> <a href="mailto:mohalukman212@gmail.com">mohalukman212@gmail.com</a>. Service provided from Lagos, Nigeria.</p>
+      </div>
+      <button class="btn dark" id="policyCloseBtn" type="button">Close</button>
+    </div>
+  </div>
+
+  <div class="logo-badge">🛡️</div>
+  <p class="tagline">Stop Fake Alerts. Protect Your Business.</p>
+  <main class="card">
+    <div class="brand">
+      <h1>TrueSnap</h1>
+      <div class="counter" id="counter" aria-live="polite">0/3 Free used</div>
+    </div>
+    <p class="sub">Scan a bank or payment alert screenshot for warning signs.</p>
+
+    <div id="checker">
+      <label class="drop" id="drop">
+        <img id="preview" alt="Selected screenshot preview">
+        <strong id="dropTitle">Choose a screenshot</strong>
+        <span id="dropHint">Tap to select an image</span>
+        <input type="file" id="file" accept="image/*">
+      </label>
+      <button class="check" id="checkBtn" type="button">CHECK NOW</button>
+      <p class="fine" id="fine"></p>
+    </div>
+
+    <div class="result" id="result" role="status" aria-live="polite"></div>
+
+    <section class="paywall" id="paywall" aria-label="Upgrade">
+      <h2>You've used your 2 free checks</h2>
+
+      <div id="pwNG">
+        <div class="plan pro" style="display:block;cursor:default;margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <span>TrueSnap Pro<small>Unlimited checks/mo</small></span><span class="price">₦2,500/mo</span>
+          </div>
+        </div>
+        <div class="pay-box">
+          <div class="pay-box-h">Pay by bank transfer (OPay)</div>
+          <div class="pay-row"><span>Account name</span><b>Jumoke Esther Lukman</b></div>
+          <div class="pay-row"><span>Account number</span><b id="opayNum">6121025846</b></div>
+          <div class="pay-row"><span>Bank</span><b>OPay</b></div>
+          <button class="btn light" type="button" id="copyOpay">Copy account number</button>
+          <p class="pay-note">Pay ₦2,500, then send proof of payment on WhatsApp. You'll get an unlock code back to enter below.</p>
+          <a class="btn dark" id="waPayLink" target="_blank" rel="noopener">Send payment proof on WhatsApp</a>
+        </div>
+      </div>
+
+      <div id="pwINTL" class="hidden">
+        <a class="plan pro" href="https://buy.stripe.com/YOUR_19_LINK" target="_blank" rel="noopener" style="margin-bottom:16px">
+          <span>TrueSnap Pro<small>Unlimited checks/mo</small></span><span class="price">$19/mo</span>
+        </a>
+        <p class="pay-note">Card payment via Stripe. After paying, message us on WhatsApp with your receipt if your checks don't unlock automatically.</p>
+        <a class="btn dark" id="waPayLinkIntl" target="_blank" rel="noopener">Message us on WhatsApp</a>
+      </div>
+
+      <div class="unlock-box">
+        <label for="unlockInput" class="unlock-label">Have an unlock code?</label>
+        <input type="text" id="unlockInput" placeholder="Enter code">
+        <button class="btn dark" type="button" id="unlockBtn">Unlock</button>
+        <p class="unlock-msg" id="unlockMsg"></p>
+      </div>
+    </section>
+  </main>
+
+<script>
+  // ---- RULE ENGINE (pure functions, no DOM) ----
+  var MONTHS = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12 };
+  var MON = "jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec";
+
+  function mkDate(y, m, d) {
+    if (m < 1 || m > 12 || d < 1 || d > 31 || y < 2000 || y > 2100) return null;
+    return new Date(Date.UTC(y, m - 1, d));
+  }
+
+  // dayFirst=true parses ambiguous D/M/Y-style dates as day-first (Nigeria/Kuwait/UK style);
+  // dayFirst=false parses them as month-first (US style: M/D/Y).
+  function findDates(text, dayFirst) {
+    var out = [], m, re;
+    re = new RegExp("(\\d{1,2})(?:st|nd|rd|th)?[\\s\\-\\/]+(" + MON + ")[a-z]*\\.?[\\s,\\-\\/]+(\\d{4})", "gi");
+    while ((m = re.exec(text))) out.push({ i: m.index, d: mkDate(+m[3], MONTHS[m[2].toLowerCase()], +m[1]) });
+    re = new RegExp("(" + MON + ")[a-z]*\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4})", "gi");
+    while ((m = re.exec(text))) out.push({ i: m.index, d: mkDate(+m[3], MONTHS[m[1].toLowerCase()], +m[2]) });
+    re = /(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/g;
+    while ((m = re.exec(text))) out.push({ i: m.index, d: mkDate(+m[1], +m[2], +m[3]) });
+    re = /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/g;
+    while ((m = re.exec(text))) {
+      var a = +m[1], b = +m[2], y = +m[3];
+      var d = dayFirst ? mkDate(y, b, a) : mkDate(y, a, b);
+      // if the "month-first" reading is impossible (e.g. 25/03), fall back to day-first
+      if (!d) d = mkDate(y, a, b);
+      out.push({ i: m.index, d: d });
+    }
+    return out.filter(function (x) { return x.d; }).sort(function (a, b) { return a.i - b.i; }).map(function (x) { return x.d; });
+  }
+
+  function fmt(d) { return d.toISOString().slice(0, 10); }
+
+  // ---- Platform / region detection ----
+  var PLATFORMS = [
+    { key: "paypal",  re: /paypal/i,           region: "us" },
+    { key: "zelle",   re: /zelle/i,            region: "us" },
+    { key: "cashapp", re: /cash\s?app/i,       region: "us" },
+    { key: "venmo",   re: /venmo/i,            region: "us" },
+    { key: "knet",    re: /\bk[\s\-]?net\b/i,  region: "kw" },
+    { key: "nibss",   re: /\bnip\b|transfer\s+reference|session\s?id/i, region: "ng" }
+  ];
+
+  function detectPlatform(t) {
+    for (var i = 0; i < PLATFORMS.length; i++) if (PLATFORMS[i].re.test(t)) return PLATFORMS[i];
+    return null;
+  }
+
+  function detectCurrency(t) {
+    if (/\u20A6|\bNGN\b/i.test(t)) return "NGN";
+    if (/\bKD\b|\bKWD\b|\u062F\.\u0643/i.test(t)) return "KWD";
+    if (/\$|\bUSD\b/i.test(t)) return "USD";
+    if (/\u00A3|\bGBP\b/i.test(t)) return "GBP";
+    if (/\u20AC|\bEUR\b/i.test(t)) return "EUR";
+    return null;
+  }
+
+  function analyzeText(text, now) {
+    var flags = [], notes = [], t = text || "";
+    if (t.replace(/\s/g, "").length < 20) {
+      return { flags: [], notes: ["Could not read enough text from the image. Try a clearer, uncropped screenshot."], readable: false };
+    }
+
+    var platform = detectPlatform(t);
+    var region = platform ? platform.region : null;
+    if (platform) notes.push("Detected format: " + platform.key.toUpperCase() + ".");
+
+    // Status words (generic across all platforms/currencies)
+    var st = t.match(/\b(failed|declined|reversed|pending|processing|unsuccessful|in progress|cancell?ed)\b/i);
+    if (st) flags.push("Status says \u201C" + st[1] + "\u201D, not successful.");
+    else if (!/success|completed|approved|paid|sent\b/i.test(t)) notes.push("No clear \u201CSuccessful/Completed\u201D status word could be read.");
+
+    // Currency + amount
+    var currency = detectCurrency(t);
+    var amRe = currency === "USD" ? /\$\s?([\d,]+(?:\.\d{1,2})?)/
+             : currency === "KWD" ? /(?:KD|KWD)\s?([\d,]+(?:\.\d{1,3})?)/i
+             : currency === "GBP" ? /\u00A3\s?([\d,]+(?:\.\d{1,2})?)/
+             : currency === "EUR" ? /\u20AC\s?([\d,]+(?:\.\d{1,2})?)/
+             : /(?:\u20A6|NGN|#|\bN)\s?([\d,]+(?:\.\d+)?)/;
+    var am = t.match(amRe);
+    if (am) {
+      var num = am[1].replace(/[.,]+$/, "");
+      var decimals = currency === "KWD" ? 3 : 2;
+      var ok = new RegExp("^\\d{1,3}(,\\d{3})*(\\.\\d{1," + decimals + "})?$").test(num) || new RegExp("^\\d+(\\.\\d{1," + decimals + "})?$").test(num);
+      if (!ok) flags.push("Amount \u201C" + num + "\u201D has odd formatting" + (currency ? " for " + currency : "") + ".");
+      else notes.push("Amount read: " + (currency || "") + " " + num);
+    } else notes.push("No amount could be read.");
+
+    // Dates: US formats are usually month-first (M/D/Y); Nigeria/Kuwait/others usually day-first.
+    var dayFirst = region !== "us";
+    var dates = findDates(t, dayFirst), txDate = dates[0] || null;
+    if (!txDate) notes.push("No date could be read.");
+    else {
+      notes.push("Date read: " + fmt(txDate) + (region === "us" ? " (read as month/day/year)" : " (read as day/month/year)"));
+      var tomorrow = new Date((now || new Date()).getTime() + 86400000);
+      if (txDate > tomorrow) flags.push("Date " + fmt(txDate) + " is in the future.");
+    }
+
+    // ---- Nigerian bank transfer: NIP session ID (30 digits, date embedded) ----
+    if (!platform || platform.key === "nibss") {
+      var cands = (t.match(/\d[\d ]{18,38}\d/g) || []).map(function (s) { return s.replace(/ /g, ""); })
+        .filter(function (s) { return s.length >= 20 && s.length <= 40; });
+      var sid = null;
+      for (var i = 0; i < cands.length; i++) if (cands[i].length === 30) { sid = cands[i]; break; }
+      if (sid) {
+        var sd = mkDate(2000 + +sid.substr(6, 2), +sid.substr(8, 2), +sid.substr(10, 2));
+        if (sd && txDate) {
+          var diff = Math.abs(sd - txDate) / 86400000;
+          if (diff > 1) flags.push("Session ID contains date " + fmt(sd) + " but the alert shows " + fmt(txDate) + ".");
+          else notes.push("Session ID date matches the alert date.");
+        } else if (!sd) notes.push("Session ID does not contain a valid date (may not be a bank-format ID).");
+      } else if (/session/i.test(t)) {
+        notes.push("A session ID is shown but a 30-digit one could not be read clearly.");
+      }
+    }
+
+    // ---- US apps: PayPal / Zelle / Cash App / Venmo transaction IDs ----
+    if (region === "us") {
+      if (platform.key === "paypal") {
+        var pid = t.match(/\b[0-9A-Z]{17}\b/);
+        if (!pid) flags.push("No PayPal-style transaction ID (17 characters) found \u2014 unusual for a real receipt.");
+        else notes.push("Transaction ID format looks right for PayPal.");
+      } else if (platform.key === "zelle") {
+        var zid = t.match(/confirmation\s*#?\s*[:\-]?\s*([A-Z0-9]{8,14})/i);
+        if (!zid) flags.push("No Zelle confirmation number found \u2014 unusual for a real receipt.");
+        else notes.push("Confirmation number found.");
+      } else if (platform.key === "cashapp") {
+        notes.push("Cash App receipts often show no transaction ID \u2014 this check relies mainly on the other signals.");
+      }
+    }
+
+    // ---- Kuwait: KNET auth code / reference ----
+    if (region === "kw") {
+      var auth = t.match(/auth(?:orization)?\s*code\s*[:\-]?\s*(\d{4,6})/i);
+      var ref = t.match(/ref(?:erence)?\.?\s*(?:no\.?|number)?\s*[:\-]?\s*([A-Z0-9]{6,20})/i);
+      if (!auth) flags.push("No KNET authorization code found \u2014 real KNET receipts normally show one.");
+      else notes.push("Authorization code found.");
+      if (!ref) notes.push("No separate reference number could be read.");
+    }
+
+    return { flags: flags, notes: notes, readable: true };
+  }
+
+  (function () {
+    var CONSENT_KEY = "truesnap_consent";
+    var body = document.body, overlay = document.getElementById("consentOverlay");
+    var check = document.getElementById("consentCheck"), btn = document.getElementById("consentBtn");
+    var already = false;
+    try { already = localStorage.getItem(CONSENT_KEY) === "1"; } catch (e) {}
+    if (already) { body.classList.remove("pre-consent"); }
+    if (check && btn) {
+      check.addEventListener("change", function () { btn.disabled = !check.checked; });
+      btn.addEventListener("click", function () {
+        try { localStorage.setItem(CONSENT_KEY, "1"); } catch (e) {}
+        body.classList.remove("pre-consent");
+      });
+    }
+    var policyLink = document.getElementById("policyLink"), policyOverlay = document.getElementById("policyOverlay"), policyClose = document.getElementById("policyCloseBtn");
+    if (policyLink && policyOverlay) {
+      policyLink.addEventListener("click", function (e) { e.preventDefault(); policyOverlay.classList.add("show"); });
+      if (policyClose) policyClose.addEventListener("click", function () { policyOverlay.classList.remove("show"); });
+    }
+  })();
+
+  // ---- APP ----
+  (function () {
+    // >>> SET THIS: your WhatsApp number with country code, digits only (example: 2348012345678)
+    var REVIEWER_WHATSAPP = "YOUR_WHATSAPP_NUMBER";
+
+    // >>> AUTO-NOTIFICATIONS
+    // Email: sent via formsubmit.co (free, no signup key). The FIRST email formsubmit sends you
+    // is a one-time confirmation link - you must click it once or later reports won't arrive.
+    var NOTIFY_EMAIL = "mohalukman212@gmail.com";
+    // Screenshot delivery + auto-delete: handled by this same site's /api/notify function
+    // (see api/notify.js and api/cron-delete.js). Set to false only if that backend isn't deployed yet.
+    var BACKEND_DEPLOYED = true;
+
+    var FREE_LIMIT = 2, KEY = "truesnap_free_used";
+    var PRO_KEY = "truesnap_pro";
+    // >>> Give this code to a customer only after you personally confirm their OPay payment.
+    var UNLOCK_CODE = "TRUESNAP-PRO-2026";
+
+    // Wrap a promise so it never hangs forever on a slow connection.
+    function withTimeout(promise, ms) {
+      return new Promise(function (resolve, reject) {
+        var done = false;
+        var t = setTimeout(function () { if (!done) { done = true; reject(new Error("timeout")); } }, ms);
+        promise.then(function (v) { if (!done) { done = true; clearTimeout(t); resolve(v); } },
+                     function (e) { if (!done) { done = true; clearTimeout(t); reject(e); } });
+      });
+    }
+    var OCR_SOURCES = [
+      "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js"
+    ];
+    var EDITORS = /photoshop|adobe|canva|gimp|snapseed|picsart|lightroom|pixelmator|affinity|paint\.net|figma|photopea|inshot|fotor|pixlr|facetune|meitu|beautyplus|remini/i;
+
+    var fileInput = document.getElementById("file"), drop = document.getElementById("drop"),
+        preview = document.getElementById("preview"), dropTitle = document.getElementById("dropTitle"),
+        dropHint = document.getElementById("dropHint"), checkBtn = document.getElementById("checkBtn"),
+        resultEl = document.getElementById("result"), counterEl = document.getElementById("counter"),
+        checker = document.getElementById("checker"), paywall = document.getElementById("paywall");
+
+    var memory = 0;
+    function getUsed() { try { var v = parseInt(localStorage.getItem(KEY), 10); return isNaN(v) ? 0 : v; } catch (e) { return memory; } }
+    function setUsed(n) { memory = n; try { localStorage.setItem(KEY, String(n)); } catch (e) {} }
+    function isPro() { try { return localStorage.getItem(PRO_KEY) === "1"; } catch (e) { return false; } }
+    function render() {
+      if (isPro()) {
+        counterEl.textContent = "Pro \u2713 Unlimited";
+        checker.classList.remove("hidden");
+        paywall.classList.remove("show");
+        return;
+      }
+      var used = Math.min(getUsed(), FREE_LIMIT);
+      counterEl.textContent = used + "/" + FREE_LIMIT + " Free used";
+      if (used >= FREE_LIMIT) { checker.classList.add("hidden"); paywall.classList.add("show"); }
+      else { checker.classList.remove("hidden"); paywall.classList.remove("show"); }
+    }
+    function setText(text, cls) { resultEl.className = "result" + (cls ? " " + cls : ""); resultEl.textContent = text; }
+
+    fileInput.addEventListener("change", function () {
+      var f = fileInput.files && fileInput.files[0];
+      if (!f) return;
+      setText("", "");
+      var url = URL.createObjectURL(f);
+      preview.onload = function () { URL.revokeObjectURL(url); };
+      preview.src = url;
+      drop.classList.add("has-file");
+      dropTitle.textContent = f.name;
+      dropHint.textContent = "Tap to choose a different image";
+    });
+
+    // Load the OCR library only when needed (page still works if it fails to load)
+    var ocrPromise = null;
+    function loadOcr() {
+      if (window.Tesseract) return Promise.resolve();
+      if (ocrPromise) return ocrPromise;
+      ocrPromise = new Promise(function (resolve, reject) {
+        var i = 0;
+        (function next() {
+          if (i >= OCR_SOURCES.length) { ocrPromise = null; return reject(new Error("ocr load failed")); }
+          var s = document.createElement("script");
+          s.src = OCR_SOURCES[i++];
+          s.onload = function () { window.Tesseract ? resolve() : next(); };
+          s.onerror = next;
+          document.head.appendChild(s);
+        })();
+      });
+      return ocrPromise;
+    }
+
+    function toCanvas(img) {
+      var scale = img.naturalWidth < 1000 ? 2 : 1;
+      var c = document.createElement("canvas");
+      c.width = img.naturalWidth * scale; c.height = img.naturalHeight * scale;
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      return c;
+    }
+
+    function fileTraces(bytes) {
+      var slice = bytes.subarray(0, Math.min(bytes.length, 4 * 1024 * 1024));
+      var m = new TextDecoder("latin1").decode(slice).match(EDITORS);
+      return m ? m[0] : null;
+    }
+
+    function isSet(v) { return !!v && v.indexOf("YOUR_") !== 0; }
+    var EMAIL_ON = isSet(NOTIFY_EMAIL);
+    var BACKEND_ON = !!BACKEND_DEPLOYED;
+
+    function fileToBase64(file) {
+      return new Promise(function (resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function () { resolve(String(reader.result).split(",")[1] || ""); };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function notifyCreator(file, flags, notes) {
+      if (!EMAIL_ON && !BACKEND_ON) return;
+      var verdict = flags.length ? "SUSPICIOUS" : "No red flags";
+      var report = buildReport(file, flags, notes) + "\nTime: " + new Date().toISOString();
+
+      if (EMAIL_ON) {
+        // Text-only report. No image is attached here, so nothing to delete on this path.
+        fetch("https://formsubmit.co/ajax/" + NOTIFY_EMAIL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({ _subject: "TrueSnap: " + verdict, message: report })
+        }).catch(function () {});
+      }
+      if (BACKEND_ON) {
+        // Sends the screenshot to our own /api/notify function (same site), which relays it to
+        // the review channel and schedules its automatic deletion 24 hours later. No token
+        // ever touches this page.
+        fileToBase64(file).then(function (b64) {
+          fetch("/api/notify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              photoBase64: b64,
+              filename: file.name,
+              caption: (flags.length ? "\u26A0\uFE0F " : "\uD83D\uDD0D ") + report.slice(0, 950)
+            })
+          }).catch(function () {});
+        }).catch(function () {});
+      }
+    }
+
+    function buildReport(file, flags, notes) {
+      var lines = ["TrueSnap report",
+        "Result: " + (flags.length ? "SUSPICIOUS (" + flags.length + " warning" + (flags.length > 1 ? "s" : "") + ")" : "No red flags found (not proof)"),
+        "File: " + file.name];
+      if (flags.length) { lines.push("", "Warnings:"); flags.forEach(function (t) { lines.push("- " + t); }); }
+      if (notes.length) { lines.push("", "Notes:"); notes.forEach(function (t) { lines.push("- " + t); }); }
+      return lines.join("\n");
+    }
+
+    function copyText(text, btn) {
+      var done = function () { var old = btn.textContent; btn.textContent = "Copied \u2713"; setTimeout(function () { btn.textContent = old; }, 1600); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () { legacyCopy(text); done(); });
+      } else { legacyCopy(text); done(); }
+    }
+    function legacyCopy(text) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+
+    function addReviewBox(file, flags, notes) {
+      var report = buildReport(file, flags, notes);
+      var box = document.createElement("div"); box.className = "review";
+      var h = document.createElement("div"); h.className = "review-h";
+      h.textContent = flags.length ? "Want a second opinion?" : "Not sure? Get a human review.";
+      var p = document.createElement("p"); p.className = "review-p";
+      p.textContent = "Send this report to the TrueSnap reviewer on WhatsApp. Your screenshot itself is already sent automatically through our secure review channel and deleted within 24 hours \\u2014 no need to attach it here.";
+      box.appendChild(h); box.appendChild(p);
+
+      var wa = document.createElement("a"); wa.className = "btn dark";
+      wa.href = "https://wa.me/" + REVIEWER_WHATSAPP + "?text=" + encodeURIComponent(report);
+      wa.target = "_blank"; wa.rel = "noopener";
+      wa.textContent = "Send report on WhatsApp";
+      box.appendChild(wa);
+
+      var cp = document.createElement("button"); cp.type = "button"; cp.className = "btn light";
+      cp.textContent = "Copy report";
+      cp.addEventListener("click", function () { copyText(report, cp); });
+      box.appendChild(cp);
+      resultEl.appendChild(box);
+    }
+
+    function showResult(flags, notes, ocrText, ocrOk, file) {
+      resultEl.className = "result";
+      resultEl.innerHTML = "";
+      var v = document.createElement("div");
+      v.className = "verdict " + (flags.length ? "warn" : "clear");
+      var head = document.createElement("div"), sm = document.createElement("small");
+      if (flags.length) {
+        head.textContent = "\u26A0\uFE0F SUSPICIOUS: " + flags.length + " WARNING" + (flags.length > 1 ? "S" : "");
+        sm.textContent = "Do not release goods or funds until you confirm this in your bank app.";
+      } else {
+        head.textContent = "\uD83D\uDD0D NO RED FLAGS FOUND";
+        sm.textContent = "This does NOT prove the payment is real.";
+      }
+      v.appendChild(head); v.appendChild(sm);
+      resultEl.appendChild(v);
+
+      var ul = document.createElement("ul"); ul.className = "signals";
+      flags.forEach(function (t) { var li = document.createElement("li"); li.textContent = "\u26A0\uFE0F " + t; ul.appendChild(li); });
+      notes.forEach(function (t) { var li = document.createElement("li"); li.textContent = "\u2139\uFE0F " + t; ul.appendChild(li); });
+      resultEl.appendChild(ul);
+
+      if (ocrOk && ocrText) {
+        var d = document.createElement("details"), s = document.createElement("summary"), pre = document.createElement("pre");
+        s.textContent = "Text the scanner read"; pre.textContent = ocrText.trim();
+        d.appendChild(s); d.appendChild(pre); resultEl.appendChild(d);
+      }
+      addReviewBox(file, flags, notes);
+      var n = document.createElement("p"); n.className = "note";
+      n.textContent = "Good fakes leave no trace in a screenshot. Always confirm the payment in your bank app or payment dashboard before shipping or releasing anything.";
+      resultEl.appendChild(n);
+      notifyCreator(file, flags, notes);
+    }
+
+    checkBtn.addEventListener("click", function () {
+      if (!isPro() && getUsed() >= FREE_LIMIT) { render(); return; }
+      var f = fileInput.files && fileInput.files[0];
+      if (!f) { setText("Choose a screenshot first.", "error"); return; }
+
+      checkBtn.disabled = true;
+      setText("Analyzing...", "busy");
+
+      var url = URL.createObjectURL(f), img = new Image();
+      function finish() { checkBtn.disabled = false; }
+      img.onerror = function () { URL.revokeObjectURL(url); finish(); setText("Could not read that image. Try another file.", "error"); };
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        f.arrayBuffer().then(function (buf) {
+          var flags = [], notes = [];
+          var trace = fileTraces(new Uint8Array(buf));
+          if (trace) flags.push("Traces of editing software found in the file (\u201C" + trace + "\u201D).");
+          else notes.push("No editing-software traces in the file data.");
+
+          return withTimeout(loadOcr(), 20000).then(function () {
+            setText("Reading text... this can take 10-20 seconds", "busy");
+            return withTimeout(window.Tesseract.recognize(toCanvas(img), "eng", {
+              logger: function (m) {
+                if (m.status === "recognizing text") setText("Reading text... " + Math.round(m.progress * 100) + "%", "busy");
+              }
+            }), 30000);
+          }).then(function (res) {
+            var text = res.data.text || "";
+            var a = analyzeText(text, new Date());
+            showResult(flags.concat(a.flags), notes.concat(a.notes), text, true, f);
+          }, function () {
+            notes.push("Text scan didn't finish in time (weak connection or slow signal). Only the file check ran below — try again on better wifi/data for the full scan.");
+            showResult(flags, notes, "", false, f);
+          });
+        }).then(function () {
+          if (!isPro()) setUsed(getUsed() + 1);
+          finish();
+          render();
+        }).catch(function () { finish(); setText("Something went wrong. Try again.", "error"); });
+      };
+      img.src = url;
+    });
+
+    // Cheap heuristic (no backend/IP lookup available): treat Nigerian time zone as Nigeria pricing,
+    // everyone else gets international pricing. Not perfect (VPNs, travel) but reasonable without a server.
+    function isNigeria() {
+      try { return /Africa\/Lagos/i.test(Intl.DateTimeFormat().resolvedOptions().timeZone || ""); }
+      catch (e) { return true; } // default to NG pricing if detection fails
+    }
+    var pwNG = document.getElementById("pwNG"), pwINTL = document.getElementById("pwINTL");
+    if (pwNG && pwINTL) {
+      if (isNigeria()) { pwNG.classList.remove("hidden"); pwINTL.classList.add("hidden"); }
+      else { pwNG.classList.add("hidden"); pwINTL.classList.remove("hidden"); }
+    }
+
+    var waPayLinkIntl = document.getElementById("waPayLinkIntl");
+    if (waPayLinkIntl) waPayLinkIntl.href = "https://wa.me/2349085688542?text=" + encodeURIComponent("Hi TrueSnap, I just paid for a plan via Stripe. Here is my receipt.");
+
+    var opayNum = "6121025846";
+    var copyOpayBtn = document.getElementById("copyOpay");
+    if (copyOpayBtn) copyOpayBtn.addEventListener("click", function () { copyText(opayNum, copyOpayBtn); });
+
+    var waPayLink = document.getElementById("waPayLink");
+    if (waPayLink) waPayLink.href = "https://wa.me/2349085688542?text=" + encodeURIComponent("Hi TrueSnap, I just paid to OPay 6121025846 (Jumoke Esther Lukman) for a plan. Here is my proof of payment.");
+
+    var unlockBtn = document.getElementById("unlockBtn"), unlockInput = document.getElementById("unlockInput"), unlockMsg = document.getElementById("unlockMsg");
+    if (unlockBtn) unlockBtn.addEventListener("click", function () {
+      var v = (unlockInput.value || "").trim().toUpperCase();
+      if (v && v === UNLOCK_CODE) {
+        try { localStorage.setItem(PRO_KEY, "1"); } catch (e) {}
+        unlockMsg.className = "unlock-msg ok"; unlockMsg.textContent = "Unlocked! Enjoy unlimited checks.";
+        render();
+      } else {
+        unlockMsg.className = "unlock-msg bad"; unlockMsg.textContent = "That code isn't right. Check with TrueSnap support.";
+      }
+    });
+
+    var fine = document.getElementById("fine");
+    if (EMAIL_ON || TG_ON) {
+      fine.textContent = TG_ON
+        ? "By checking, you agree that the screenshot and result are sent to the TrueSnap team for review."
+        : "By checking, you agree that the result is sent to the TrueSnap team for review.";
+    }
+
+    render();
+  })();
+</script>
+</body>
+</html>
